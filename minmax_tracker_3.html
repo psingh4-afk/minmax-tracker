@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Min-Max Tracker</title>
+<style>
+  :root {
+    --bg: #f4f4f0;
+    --surface: #ffffff;
+    --surface2: #f9f9f6;
+    --border: #e0dfd8;
+    --text: #1a1a1a;
+    --text2: #555550;
+    --text3: #999990;
+    --accent: #2e7d32;
+    --accent-light: #e8f5e9;
+    --accent2: #1565c0;
+    --accent2-light: #e3f2fd;
+    --deload: #e65100;
+    --deload-light: #fff3e0;
+    --block2: #6a1b9a;
+    --block2-light: #f3e5f5;
+    --warn: #c62828;
+    --warn-light: #ffebee;
+    --gold: #f57f17;
+    --gold-light: #fffde7;
+    --rec: #2e7d32;
+    --rec-bg: #e8f5e9;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    min-height: 100vh;
+    padding-bottom: 80px;
+  }
+
+  /* ── NAV ── */
+  .nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+  }
+  .nav-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px 4px;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.3px;
+  }
+  .nav-sub { padding: 2px 16px 10px; font-size: 12px; color: var(--text3); }
+  .tab-bar {
+    display: flex;
+    overflow-x: auto;
+    gap: 0;
+    padding: 0 8px;
+    scrollbar-width: none;
+    border-top: 1px solid var(--border);
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text3);
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── WEEK SELECTOR ── */
+  .week-bar {
+    background: var(--surface);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .week-bar::-webkit-scrollbar { display: none; }
+  .week-btn {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .week-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .week-btn.deload { border-color: var(--deload); }
+  .week-btn.deload.active { background: var(--deload); border-color: var(--deload); color: white; }
+  .week-btn.block2 { border-color: var(--block2); }
+  .week-btn.block2.active { background: var(--block2); border-color: var(--block2); color: white; }
+
+  /* ── WEEK BADGE ── */
+  .week-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 600;
+    margin: 12px 12px 4px;
+  }
+  .week-badge.intro { background: var(--rec-bg); color: var(--rec); }
+  .week-badge.normal { background: var(--accent2-light); color: var(--accent2); }
+  .week-badge.deload { background: var(--deload-light); color: var(--deload); }
+  .week-badge.block2 { background: var(--block2-light); color: var(--block2); }
+
+  /* ── WARMUP CARD ── */
+  .warmup-card {
+    margin: 8px 12px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .warmup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .warmup-header-left { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+  .warmup-toggle { font-size: 18px; color: var(--text3); transition: transform 0.2s; }
+  .warmup-toggle.open { transform: rotate(180deg); }
+  .warmup-body { display: none; border-top: 1px solid var(--border); }
+  .warmup-body.open { display: block; }
+  .warmup-section { padding: 10px 14px; }
+  .warmup-section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text3); margin-bottom: 6px;
+  }
+  .warmup-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 5px 0;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+  }
+  .warmup-item:last-child { border-bottom: none; }
+  .warmup-time { font-weight: 700; color: var(--accent); min-width: 52px; font-size: 12px; }
+  .warmup-text { color: var(--text2); flex: 1; }
+  .cooldown-section { background: var(--accent2-light); }
+
+  /* ── EXERCISE CARD ── */
+  .exercise-card {
+    margin: 8px 12px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .ex-header {
+    padding: 12px 14px 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .ex-name-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .ex-name { font-size: 15px; font-weight: 700; color: var(--text); flex: 1; }
+  .ex-chevron { font-size: 16px; color: var(--text3); transition: transform 0.2s; flex-shrink: 0; margin-top: 2px; }
+  .ex-chevron.open { transform: rotate(180deg); }
+  .ex-meta { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-reps { background: var(--accent-light); color: var(--accent); }
+  .badge-rir { background: var(--gold-light); color: var(--gold); }
+  .badge-tech { background: var(--block2-light); color: var(--block2); }
+  .badge-rec { background: var(--rec-bg); color: var(--rec); }
+
+  /* ── SET INPUT ROWS ── */
+  .sets-section {
+    border-top: 1px solid var(--border);
+    padding: 10px 14px;
+  }
+  .set-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .set-row:last-child { border-bottom: none; }
+  .set-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text3);
+    min-width: 38px;
+  }
+  .set-rir {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 10px;
+    min-width: 48px;
+    text-align: center;
+  }
+  .rir-0 { background: var(--warn-light); color: var(--warn); }
+  .rir-1 { background: var(--gold-light); color: var(--gold); }
+  .rir-2 { background: var(--accent-light); color: var(--accent); }
+  .input-group { display: flex; gap: 6px; flex: 1; }
+  .input-field {
+    flex: 1;
+    padding: 9px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    background: var(--surface2);
+    color: var(--text);
+    text-align: center;
+    -webkit-appearance: none;
+    min-width: 0;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .input-field:focus { border-color: var(--accent); background: white; }
+  .input-field.has-value { background: var(--accent-light); border-color: var(--accent); font-weight: 600; }
+  .input-field.rec-value { background: var(--rec-bg); border-color: var(--rec); font-weight: 600; color: var(--rec); }
+  .input-label { font-size: 10px; color: var(--text3); text-align: center; margin-top: 2px; }
+  .input-wrap { flex: 1; min-width: 0; }
+
+  /* ── DETAILS SECTION ── */
+  .details-section {
+    border-top: 1px solid var(--border);
+    display: none;
+  }
+  .details-section.open { display: block; }
+  .detail-row {
+    display: flex;
+    gap: 8px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    align-items: flex-start;
+  }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label { font-weight: 700; color: var(--text3); font-size: 11px; min-width: 50px; text-transform: uppercase; letter-spacing: 0.3px; padding-top: 1px; }
+  .detail-value { color: var(--text2); flex: 1; }
+  .video-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--accent2);
+    font-weight: 600;
+    text-decoration: none;
+    padding: 6px 12px;
+    background: var(--accent2-light);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+  }
+  .video-link:hover { opacity: 0.85; }
+
+  /* ── TECHNIQUE BOX ── */
+  .technique-box {
+    margin: 0 14px 10px;
+    padding: 10px 12px;
+    background: var(--block2-light);
+    border-left: 3px solid var(--block2);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 12px;
+    color: var(--block2);
+    line-height: 1.5;
+    display: none;
+  }
+  .technique-box.visible { display: block; }
+  .technique-box strong { display: block; margin-bottom: 3px; font-size: 13px; }
+
+  /* ── SECTION HEADER ── */
+  .section-label {
+    padding: 16px 12px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text3);
+  }
+
+  /* ── DASHBOARD ── */
+  .info-card {
+    margin: 8px 12px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .info-card-title {
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .info-row {
+    display: flex;
+    align-items: flex-start;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+    font-size: 13px;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-key { font-weight: 600; color: var(--text2); min-width: 90px; flex-shrink: 0; }
+  .info-val { color: var(--text); flex: 1; line-height: 1.4; }
+  .rir-pill {
+    display: inline-flex; align-items: center;
+    padding: 5px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 700;
+    margin: 3px 3px 3px 0;
+  }
+  .tech-block {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .tech-block:last-child { border-bottom: none; }
+  .tech-block strong { display: block; color: var(--block2); margin-bottom: 4px; font-size: 14px; }
+  .tech-block small { color: var(--text3); font-size: 11px; }
+
+  /* ── BOTTOM SAVE BAR ── */
+  .save-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 10px 12px;
+    display: flex;
+    gap: 8px;
+    z-index: 200;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+  }
+  .save-btn {
+    flex: 1;
+    padding: 13px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: -0.2px;
+  }
+  .save-btn-primary { background: var(--accent); color: white; }
+  .save-btn-secondary { background: var(--surface2); color: var(--text2); border: 1.5px solid var(--border); }
+  .save-btn:active { transform: scale(0.97); }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    top: 80px; left: 50%; transform: translateX(-50%) translateY(-10px);
+    background: var(--text); color: white;
+    padding: 10px 20px; border-radius: 20px;
+    font-size: 13px; font-weight: 600;
+    opacity: 0; transition: all 0.2s;
+    pointer-events: none; z-index: 300;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── PAGE VISIBILITY ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .save-btn-setup {
+    flex: 0 0 auto;
+    padding: 13px 16px;
+    background: var(--surface2);
+    color: var(--text3);
+    border: 1.5px solid var(--border);
+    font-size: 18px;
+  }
+  .save-btn-setup.connected { color: var(--accent); border-color: var(--accent); background: var(--accent-light); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 500;
+    display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: auto; }
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding: 20px 16px 36px;
+    width: 100%; max-width: 540px;
+    transform: translateY(20px);
+    transition: transform 0.2s;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .modal-sub { font-size: 13px; color: var(--text3); margin-bottom: 16px; line-height: 1.5; }
+  .modal-step {
+    display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start;
+  }
+  .modal-step-num {
+    flex-shrink: 0; width: 26px; height: 26px;
+    background: var(--accent); color: white;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .modal-step-body { flex: 1; font-size: 13px; line-height: 1.5; }
+  .modal-step-body strong { display: block; margin-bottom: 2px; }
+  .modal-step-body a { color: var(--accent2); }
+  .modal-input {
+    width: 100%; padding: 11px 12px;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 14px; background: var(--surface2); color: var(--text);
+    margin-top: 6px; outline: none;
+  }
+  .modal-input:focus { border-color: var(--accent); background: white; }
+  .modal-btn-row { display: flex; gap: 8px; margin-top: 16px; }
+  .modal-btn {
+    flex: 1; padding: 13px;
+    border: none; border-radius: var(--radius);
+    font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  .modal-btn-primary { background: var(--accent); color: white; }
+  .modal-btn-cancel { background: var(--surface2); color: var(--text2); border: 1.5px solid var(--border); }
+  .sync-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; padding: 6px 12px;
+    border-radius: 20px; margin-left: 8px;
+  }
+  .sync-status.ok { background: var(--accent-light); color: var(--accent); }
+  .sync-status.err { background: var(--warn-light); color: var(--warn); }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  @media (min-width: 500px) {
+    .exercise-card, .warmup-card, .info-card { max-width: 540px; margin-left: auto; margin-right: auto; }
+    .week-badge { max-width: 540px; margin-left: auto; margin-right: auto; }
+    .section-label { max-width: 540px; margin-left: auto; margin-right: auto; }
+    .save-bar { max-width: 540px; left: 50%; right: auto; transform: translateX(-50%); border-radius: var(--radius) var(--radius) 0 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="nav-title">🏋 Min-Max Program</div>
+  <div class="nav-sub">Jeff Nippard · 5'8" · 170 lbs</div>
+  <div class="tab-bar" id="tabBar">
+    <button class="tab active" onclick="showPage('dash')">Overview</button>
+    <button class="tab" onclick="showPage('upper1')">Upper 1</button>
+    <button class="tab" onclick="showPage('lower1')">Lower 1</button>
+    <button class="tab" onclick="showPage('upper2')">Upper 2</button>
+    <button class="tab" onclick="showPage('lower2')">Lower 2</button>
+    <button class="tab" onclick="showPage('arms')">Arms+Delts</button>
+  </div>
+</div>
+
+<!-- WEEK SELECTOR -->
+<div class="week-bar" id="weekBar" style="display:none">
+  <span style="font-size:12px;font-weight:700;color:var(--text3);flex-shrink:0;">Week:</span>
+  <button class="week-btn active" onclick="setWeek(1)">1 ✱</button>
+  <button class="week-btn" onclick="setWeek(2)">2</button>
+  <button class="week-btn" onclick="setWeek(3)">3</button>
+  <button class="week-btn" onclick="setWeek(4)">4</button>
+  <button class="week-btn" onclick="setWeek(5)">5</button>
+  <button class="week-btn" onclick="setWeek(6)">6</button>
+  <button class="week-btn deload" onclick="setWeek(7)">7 ⬇</button>
+  <button class="week-btn block2" onclick="setWeek(8)">8 🔥</button>
+  <button class="week-btn block2" onclick="setWeek(9)">9</button>
+  <button class="week-btn block2" onclick="setWeek(10)">10</button>
+  <button class="week-btn block2" onclick="setWeek(11)">11</button>
+  <button class="week-btn block2" onclick="setWeek(12)">12</button>
+</div>
+
+<!-- ══════════════════════════════════════ DASHBOARD ══════════════════════════════════════ -->
+<div id="page-dash" class="page active">
+  <div class="section-label">Program Overview</div>
+
+  <div class="info-card">
+    <div class="info-card-title">📅 Weekly Schedule</div>
+    <div class="info-row"><div class="info-key">Monday</div><div class="info-val" style="color:var(--accent);font-weight:700">Upper 1</div></div>
+    <div class="info-row"><div class="info-key">Tuesday</div><div class="info-val" style="color:#00838f;font-weight:700">Lower 1</div></div>
+    <div class="info-row"><div class="info-key">Wednesday</div><div class="info-val" style="color:var(--text3)">REST</div></div>
+    <div class="info-row"><div class="info-key">Thursday</div><div class="info-val" style="color:var(--accent2);font-weight:700">Upper 2</div></div>
+    <div class="info-row"><div class="info-key">Friday</div><div class="info-val" style="color:#6a1b9a;font-weight:700">Lower 2</div></div>
+    <div class="info-row"><div class="info-key">Saturday</div><div class="info-val" style="color:var(--deload);font-weight:700">Arms + Delts</div></div>
+    <div class="info-row"><div class="info-key">Sunday</div><div class="info-val" style="color:var(--text3)">REST</div></div>
+  </div>
+
+  <div class="info-card">
+    <div class="info-card-title">📋 How to Use</div>
+    <div class="info-row"><div class="info-key">Week 1 ✱</div><div class="info-val">Pre-filled in green — recommended starting weight (~85% of your best). Adjust if needed.</div></div>
+    <div class="info-row"><div class="info-key">Weeks 2–12</div><div class="info-val">Blank — tap the weight/reps boxes and type what you actually did. Switch weeks to load that week's saved data.</div></div>
+    <div class="info-row"><div class="info-key">Progression</div><div class="info-val">When you hit the TOP of the rep range on ALL sets → increase weight next week.</div></div>
+    <div class="info-row"><div class="info-key">Save</div><div class="info-val">Tap "Save Session" — syncs to Google Sheets so data is accessible from any device.</div></div>
+    <div class="info-row"><div class="info-key">⚙️ Setup</div><div class="info-val">Tap <strong>⚙ Setup Sheets</strong> in the save bar to connect your Google Sheet. One-time setup — takes ~2 min.</div></div>
+  </div>
+
+  <div class="info-card">
+    <div class="info-card-title">💪 RIR Guide</div>
+    <div class="info-row">
+      <div class="info-key">RIR 2</div>
+      <div class="info-val"><span class="rir-pill rir-2">Easy</span> 2 reps left. Only used in Wk 1 (intro) &amp; Wk 7 (deload).</div>
+    </div>
+    <div class="info-row">
+      <div class="info-key">RIR 1</div>
+      <div class="info-val"><span class="rir-pill rir-1">Hard</span> Stop 1 rep before failure. Used on Set 1 of some exercises.</div>
+    </div>
+    <div class="info-row">
+      <div class="info-key">RIR 0<br><small>Isolations</small></div>
+      <div class="info-val"><span class="rir-pill rir-0">Failure</span> Go until you physically cannot complete the rep.</div>
+    </div>
+    <div class="info-row">
+      <div class="info-key">RIR 0<br><small>Compounds</small></div>
+      <div class="info-val"><span class="rir-pill rir-0">Stop Short</span> Stop when sure you have 0 left — but DON'T attempt and fail the rep. Squats, lunges, bench, leg press.</div>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <div class="info-card-title">🔥 Block 2 Techniques (Weeks 8–12 only)</div>
+    <div style="padding:8px 14px 4px;font-size:12px;color:var(--text3)">These apply ONLY to the LAST set of the exercises that show the technique badge. Weeks 1–7 = straight sets only.</div>
+    <div class="tech-block">
+      <strong>Drop Sets</strong>
+      After failure → drop weight ~25% → go to failure again → drop 25% → failure one more time. 3 back-to-back mini-sets, no rest between drops.
+      <br><small>Example: fail at 110 → drop to 82 → fail → drop to 60 → fail.</small>
+    </div>
+    <div class="tech-block">
+      <strong>Lengthened Partials</strong>
+      After full-ROM failure → keep doing partial reps using ONLY the bottom/stretched portion until you can't move at all.
+      <br><small>Example: leg curl — after full reps fail, keep doing bottom-half reps until stuck.</small>
+    </div>
+    <div class="tech-block">
+      <strong>Myo-Reps</strong>
+      After failure → rest exactly 5 sec → do 2 reps → rest 5 sec → 2 reps. Repeat until you can't get 2 full reps (~2–3 cycles).
+      <br><small>Example: fail at rep 8 → 5s → 2 → 5s → 2 → 5s → 1 = done.</small>
+    </div>
+    <div class="tech-block">
+      <strong>Weighted Static Hold</strong>
+      Machine Chest Press only. After failure → hold in the BOTTOM (stretched) position under full tension for 30 seconds.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ WORKOUT PAGES (generated by JS) ══════════════════════════════════════ -->
+<div id="page-upper1" class="page"></div>
+<div id="page-lower1" class="page"></div>
+<div id="page-upper2" class="page"></div>
+<div id="page-lower2" class="page"></div>
+<div id="page-arms" class="page"></div>
+
+<!-- ══════════ SETUP MODAL ══════════ -->
+<div class="modal-overlay" id="setupModal">
+  <div class="modal">
+    <div class="modal-title">⚙ Connect Google Sheets</div>
+    <div class="modal-sub">Your workout data will sync to a Google Sheet — accessible from any phone or computer. One-time setup, takes ~2 minutes.</div>
+
+    <div class="modal-step">
+      <div class="modal-step-num">1</div>
+      <div class="modal-step-body">
+        <strong>Create a Google Sheet</strong>
+        Go to <a href="https://sheets.new" target="_blank">sheets.new</a> and create a new blank sheet. Name it "Min-Max Tracker".
+      </div>
+    </div>
+
+    <div class="modal-step">
+      <div class="modal-step-num">2</div>
+      <div class="modal-step-body">
+        <strong>Open Apps Script</strong>
+        In your sheet: click <strong>Extensions → Apps Script</strong>. Delete any existing code.
+      </div>
+    </div>
+
+    <div class="modal-step">
+      <div class="modal-step-num">3</div>
+      <div class="modal-step-body">
+        <strong>Paste this script</strong>
+        Copy the code below and paste it into Apps Script, then click <strong>Save (💾)</strong>.
+        <textarea id="scriptCode" readonly style="width:100%;height:110px;margin-top:8px;font-size:11px;font-family:monospace;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);resize:none;color:var(--text2)"></textarea>
+        <button onclick="copyScript()" style="margin-top:6px;padding:6px 14px;font-size:12px;font-weight:600;background:var(--accent-light);color:var(--accent);border:none;border-radius:6px;cursor:pointer;">📋 Copy Code</button>
+      </div>
+    </div>
+
+    <div class="modal-step">
+      <div class="modal-step-num">4</div>
+      <div class="modal-step-body">
+        <strong>Deploy as Web App</strong>
+        Click <strong>Deploy → New deployment</strong>. Set type to <em>Web App</em>, set "Who has access" to <strong>Anyone</strong>, then click <strong>Deploy</strong>. Authorize when prompted.
+      </div>
+    </div>
+
+    <div class="modal-step">
+      <div class="modal-step-num">5</div>
+      <div class="modal-step-body">
+        <strong>Paste your Web App URL here</strong>
+        After deploying, copy the Web App URL and paste it below.
+        <input type="url" class="modal-input" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/..." />
+      </div>
+    </div>
+
+    <div class="modal-btn-row">
+      <button class="modal-btn modal-btn-cancel" onclick="closeSetup()">Cancel</button>
+      <button class="modal-btn modal-btn-primary" onclick="saveScriptUrl()">✓ Save & Connect</button>
+    </div>
+  </div>
+</div>
+
+<div class="save-bar" id="saveBar" style="display:none">
+  <button class="save-btn save-btn-secondary" onclick="clearSession()" style="flex:0 0 auto;padding:13px 14px;">Clear</button>
+  <button class="save-btn save-btn-primary" onclick="saveSession()" id="saveBtn">💾 Save</button>
+  <button class="save-btn save-btn-setup" onclick="showSetup()" id="setupBtn" title="Setup Google Sheets">⚙</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────────────────────────────
+const WORKOUTS = {
+  upper1: {
+    title: "Upper 1",
+    color: "#2e7d32",
+    exercises: [
+      { name:"BB / DB Incline Press", reps:"6–8", rir:[1,0], rec:"140 lbs",
+        tech:"Wk 8–12: Two Drop Sets (~25% per drop) after last set",
+        techFull:"After failure on your last set, drop weight ~25% and go to failure. Then drop another 25% and go to failure again. 3 back-to-back mini-sets, no rest between drops.",
+        alt1:"Smith Machine Incline Press", alt2:"DB Incline Press",
+        video:"https://youtu.be/dhSKkQdUzoA",
+        notes:"30–45° bench. 1 sec pause at bottom. RIR 0 on this = stop before failing — don't attempt the miss (compound safety)." },
+      { name:"Cable Flye", reps:"6–8", rir:[0,0], rec:"40 lbs",
+        tech:"Wk 8–12: Two Drop Sets (~25% per drop) after last set",
+        techFull:"After failure on your last set, drop weight ~25% and go to failure. Then drop another 25% and go to failure again.",
+        alt1:"Pec Deck", alt2:"DB Flye",
+        video:"https://youtu.be/FzWZ0eKMgoM",
+        notes:"1 sec pause at bottom. Maintain tension on pecs throughout." },
+      { name:"Incline DB Y-Raise", reps:"8–10", rir:[1,0], rec:"15 lbs",
+        tech:"—", techFull:"",
+        alt1:"Cable Y-Raise", alt2:"High-Cable Lateral Raise",
+        video:"https://youtu.be/nc6pAci8Tpg",
+        notes:"30° incline, back against bench. Lift up and out in a Y shape. Targets side delts." },
+      { name:"Pull-Up (Wide Grip)", reps:"6–8", rir:[1,0], rec:"Bodyweight",
+        tech:"Wk 8–12: Lengthened Partials after last set",
+        techFull:"After full-ROM failure on your last set, keep doing partial reps using only the BOTTOM/stretched portion of the movement until you can't move at all.",
+        alt1:"Lat Pulldown (Wide Grip)", alt2:"1-Arm Cable Pulldown",
+        video:"https://youtu.be/01pnZt1uVFI",
+        notes:"Control the negative. Feel lats pulling apart. Full ROM." },
+      { name:"Incline Kelso Shrug", reps:"6–8", rir:[1,0], rec:"35 lbs",
+        tech:"—", techFull:"",
+        alt1:"Seated Cable Kelso Shrug", alt2:"Machine Shrug",
+        video:"https://youtu.be/vYLLZHL9G0w",
+        notes:"Pause ~1 sec at top. Shoulder blades peel apart on the way back down." },
+      { name:"EZ-Bar Preacher Curl", reps:"6–8", rir:[0,0], rec:"75 lbs",
+        tech:"Wk 8–12: Myo-Reps after last set",
+        techFull:"After failure: rest 5 sec → do 2 reps → rest 5 sec → do 2 reps. Repeat until you can't get 2 full reps (usually 2–3 cycles).",
+        alt1:"Machine Preacher Curl", alt2:"DB Preacher Curl",
+        video:"https://youtu.be/EWOxgi81xFA",
+        notes:"Triceps pinned to pad. Smooth, controlled reps." },
+      { name:"Triceps Pressdown", reps:"6–8", rir:[0,0], rec:"100 lbs",
+        tech:"Wk 8–12: Myo-Reps after last set",
+        techFull:"After failure: rest 5 sec → do 2 reps → rest 5 sec → do 2 reps. Repeat until you can't get 2 full reps.",
+        alt1:"Smith Machine JM Press", alt2:"Close-Grip Bench Press",
+        video:"https://youtu.be/WnhjBiezSa8",
+        notes:"Rope or bar attachment. Elbows stay at sides." },
+      { name:"Dragon Flag / Leg Raise", reps:"6–10", rir:[0,0], rec:"Bodyweight",
+        tech:"—", techFull:"",
+        alt1:"Bent-Knee Dragon Flag", alt2:"Hanging Leg Raise",
+        video:"https://youtu.be/4WTBHsoAS1I",
+        notes:"Keep body rigid. Control the negative." },
+    ]
+  },
+  lower1: {
+    title: "Lower 1",
+    color: "#00838f",
+    exercises: [
+      { name:"Lying Leg Curl", reps:"6–8", rir:[0,0], rec:"100 lbs",
+        tech:"Wk 8–12: Lengthened Partials after last set",
+        techFull:"After full-ROM failure, keep doing partial reps in the BOTTOM/stretched position until you can't move at all.",
+        alt1:"Nordic Ham Curl", alt2:"Seated Leg Curl",
+        video:"https://youtu.be/UbNb5Tsl46c",
+        notes:"Max stretch at bottom. Don't let hips rise." },
+      { name:"Squat (Your Choice)", reps:"6–8", rir:[1,0], rec:"205 lbs",
+        tech:"—", techFull:"",
+        alt1:"Hack Squat / Belt Squat", alt2:"Smith Machine Squat",
+        video:"https://youtu.be/v3N4tpPpmyQ",
+        notes:"BB Back/Front, Pendulum, Hack, Belt, or Smith. RIR 0 = stop before failing — don't attempt the miss." },
+      { name:"Smith Machine Lunge", reps:"6–8", rir:[0,0], rec:"95 lbs",
+        tech:"—", techFull:"",
+        alt1:"DB Lunge", alt2:"Barbell Lunge",
+        video:"https://youtu.be/DHSuW_Wsx6M",
+        notes:"Minimize contribution from back leg. RIR 0 = stop before failing." },
+      { name:"Leg Extension", reps:"6–8", rir:[0,0], rec:"125 lbs",
+        tech:"Wk 8–12: Lengthened Partials after last set",
+        techFull:"After full-ROM failure, keep doing partial reps in the BOTTOM/stretched position of the movement until you can't move at all.",
+        alt1:"Sissy Squat", alt2:"Reverse Nordic",
+        video:"https://youtu.be/Ma99aw-VDJQ",
+        notes:"Seat back as far as comfortable. Grab handles hard to anchor hips." },
+      { name:"Machine Hip Abduction", reps:"6–8", rir:[0,0], rec:"20 lbs",
+        tech:"—", techFull:"",
+        alt1:"Standing Plate Abduction", alt2:"Cable Hip Abduction",
+        video:"https://youtu.be/Y_qP7FEsn7A",
+        notes:"Place foam pads between knees and machine pads to increase ROM." },
+      { name:"Standing Calf Raise", reps:"6–8", rir:[0,0], rec:"200 lbs",
+        tech:"Wk 8–12: Lengthened Partials after last set",
+        techFull:"After full-ROM failure, keep doing partial reps in the BOTTOM/stretched position until you can't move at all.",
+        alt1:"Donkey Calf Raise", alt2:"Leg Press Calf Press",
+        video:"https://youtu.be/LC9SO-pIXqA",
+        notes:"1–2 sec pause at bottom. Roll ankle forward/back — don't just go up on toes." },
+    ]
+  },
+  upper2: {
+    title: "Upper 2",
+    color: "#1565c0",
+    exercises: [
+      { name:"Close-Grip Lat Pulldown", reps:"8–10", rir:[1,0], rec:"135 lbs",
+        tech:"Wk 8–12: Lengthened Partials after last set",
+        techFull:"After full-ROM failure, keep doing partial reps in the BOTTOM/stretched portion until you can't move at all.",
+        alt1:"Close-Grip Pull-Up", alt2:"1-Arm Cable Pulldown",
+        video:"https://youtu.be/3DnqKKfz6wY",
+        notes:"Lean back ~15°. Drive elbows down, squeeze shoulder blades." },
+      { name:"Chest-Supported DB Row", reps:"8–10", rir:[1,0], rec:"45 lbs",
+        tech:"Wk 8–12: Two Drop Sets (~25% per drop) after last set",
+        techFull:"After failure on your last set, drop weight ~25% and go to failure. Then drop another 25% and go to failure again.",
+        alt1:"Chest-Supported T-Bar Row", alt2:"Chest-Supported Machine Row",
+        video:"https://youtu.be/Cmcv44jiQd0",
+        notes:"Flare elbows ~45°. Squeeze shoulder blades hard at top." },
+      { name:"BB Shrug-In / Cable Shrug", reps:"6–8", rir:[0,0], rec:"120 lbs",
+        tech:"—", techFull:"", sets:1,
+        alt1:"Barbell Shrug", alt2:"Machine Shrug",
+        video:"https://youtu.be/0EqU6-o3PAw",
+        notes:"Shrug up to ears. Use lifting straps if available." },
+      { name:"Machine Chest Press / DB Bench", reps:"8–10", rir:[1,0], rec:"60 lbs",
+        tech:"Wk 8–12: Weighted Static Hold (30 sec) after last set",
+        techFull:"After failure on your last set, hold the weight in the BOTTOM (fully stretched) position under full tension for 30 seconds. Don't rack it — just hold.",
+        alt1:"Smith Machine Bench Press", alt2:"DB Bench Press",
+        video:"https://youtu.be/cJ8JrXUQ3xQ",
+        notes:"1 sec pause at bottom. Maintain tension on pecs." },
+      { name:"Cable Lateral Raise", reps:"8–10", rir:[0,0], rec:"20 lbs",
+        tech:"—", techFull:"",
+        alt1:"Machine Lateral Raise", alt2:"DB Lateral Raise",
+        video:"https://youtu.be/nc6pAci8Tpg",
+        notes:"Cable at hip height. Hand slightly past midline at bottom for deep stretch." },
+      { name:"1-Arm Reverse Pec Deck", reps:"8–10", rir:[0,0], rec:"20 lbs",
+        tech:"—", techFull:"", sets:1,
+        alt1:"Lying Reverse DB Flye", alt2:"Reverse Cable Crossover",
+        video:"https://youtu.be/STZ3Twq5fgc",
+        notes:"Sweep arm in largest arc possible. Targets rear delts." },
+      { name:"Cable Crunch", reps:"6–8", rir:[0,0], rec:"100 lbs",
+        tech:"—", techFull:"",
+        alt1:"Machine Crunch", alt2:"Weighted Crunch",
+        video:"https://youtu.be/KlxdhDSi5Dc",
+        notes:"Round lower back as you crunch. Mind-muscle connection with abs." },
+    ]
+  },
+  lower2: {
+    title: "Lower 2",
+    color: "#6a1b9a",
+    exercises: [
+      { name:"Leg Extension", reps:"8–10", rir:[1,0], rec:"125 lbs",
+        tech:"Wk 8–12: Lengthened Partials after last set",
+        techFull:"After full-ROM failure, keep doing partial reps in the BOTTOM/stretched position until you can't move at all.",
+        alt1:"Sissy Squat", alt2:"Reverse Nordic",
+        video:"https://youtu.be/Ma99aw-VDJQ",
+        notes:"Seat back far. Grab handles hard." },
+      { name:"Barbell RDL", reps:"6–8", rir:[2,1], rec:"130 lbs",
+        tech:"—", techFull:"",
+        alt1:"DB RDL", alt2:"Seated Cable Deadlift",
+        video:"https://youtu.be/FCe6PIQbB-s",
+        notes:"Hips back, bar tracks center of foot. Deep stretch at bottom, neutral spine. Squeeze glutes at top." },
+      { name:"Machine Hip Thrust", reps:"6–8", rir:[1,0], rec:"175 lbs",
+        tech:"—", techFull:"",
+        alt1:"Barbell Hip Thrust", alt2:"45° Hyperextension",
+        video:"https://youtu.be/1Rr1-FW6ZJs",
+        notes:"Full hip extension at top. Squeeze glutes. Control descent." },
+      { name:"Barbell Squat", reps:"6–8", rir:[0,0], rec:"175 lbs",
+        tech:"—", techFull:"",
+        alt1:"Smith Machine Squat", alt2:"Hack Squat",
+        video:"https://youtu.be/wSHxfQJe1ic",
+        notes:"Feet lower on platform for quad focus. As deep as possible. Compound — stop before failing." },
+      { name:"Calf Raise", reps:"8–10", rir:[0,0], rec:"200 lbs",
+        tech:"Wk 8–12: Lengthened Partials after last set",
+        techFull:"After full-ROM failure, keep doing partial reps in the BOTTOM/stretched position until you can't move at all.",
+        alt1:"Donkey Calf Raise", alt2:"Leg Press Calf Press",
+        video:"https://youtu.be/LC9SO-pIXqA",
+        notes:"1–2 sec pause at bottom. Roll ankle." },
+    ]
+  },
+  arms: {
+    title: "Arms + Delts",
+    color: "#bf360c",
+    exercises: [
+      { name:"Bayesian Cable Curl", reps:"6–8", rir:[0,0], rec:"40 lbs",
+        tech:"Wk 8–12: Myo-Reps after last set",
+        techFull:"After failure: rest 5 sec → do 2 reps → rest 5 sec → do 2 reps. Repeat until you can't get 2 full reps.",
+        alt1:"Standing DB Curl", alt2:"Incline DB Curl",
+        video:"https://youtu.be/vneVQlN7LR4",
+        notes:"Lean slightly forward. Deep stretch at bottom. Control negative." },
+      { name:"Skull Crusher", reps:"8–10", rir:[0,0], rec:"100 lbs",
+        tech:"Wk 8–12: Two Drop Sets (~25% per drop) after last set",
+        techFull:"After failure on your last set, drop weight ~25% and go to failure. Then drop another 25% and go to failure again.",
+        alt1:"Overhead DB Triceps Extension", alt2:"Overhead Cable Triceps Extension",
+        video:"https://youtu.be/1n6xrEI5g0Q",
+        notes:"Deep stretch on triceps. Feel it in the long head." },
+      { name:"Modified Zottman Curl", reps:"8–10", rir:[0,0], rec:"30 lbs",
+        tech:"—", techFull:"",
+        alt1:"Preacher Hammer Curl", alt2:"DB Hammer Curl",
+        video:"https://youtu.be/sInGFVj-bJA",
+        notes:"Hammer curl UP (neutral grip) → supinated (palms up) on the way DOWN. Hits brachialis." },
+      { name:"Cable Triceps Kickback", reps:"8–10", rir:[0,0], rec:"30 lbs",
+        tech:"Wk 8–12: Two Drop Sets (~25% per drop) after last set",
+        techFull:"After failure on your last set, drop weight ~25% and go to failure. Then drop another 25% and go to failure again.",
+        alt1:"Close Grip Dip", alt2:"Seated Dip Machine",
+        video:"https://youtu.be/BRueufxDP2Q",
+        notes:"Upper arm stays behind torso throughout full ROM." },
+      { name:"DB Wrist Curl", reps:"8–10", rir:[0,0], rec:"30 lbs",
+        tech:"—", techFull:"",
+        alt1:"Cable Wrist Curl", alt2:"Barbell Wrist Curl",
+        video:"https://youtu.be/S9NEwbiYEBE",
+        notes:"Smooth, controlled reps. Full range of motion." },
+      { name:"DB Wrist Extension", reps:"6–8", rir:[0,0], rec:"15 lbs",
+        tech:"—", techFull:"",
+        alt1:"Cable Wrist Extension", alt2:"Barbell Wrist Extension",
+        video:"https://youtu.be/_KI-O0zMv60",
+        notes:"Slow, controlled reps. Targets forearm extensors." },
+      { name:"Alt. DB Curl", reps:"8–10", rir:[0,0], rec:"30 lbs",
+        tech:"—", techFull:"",
+        alt1:"EZ-Bar Curl", alt2:"Barbell Curl",
+        video:"https://youtu.be/wXjPZdhUzBQ",
+        notes:"Supinate at top of each rep. Controlled negatives." },
+      { name:"DB / Machine Lateral Raise", reps:"8–10", rir:[0,0], rec:"20 lbs",
+        tech:"Wk 8–12: Myo-Reps after last set",
+        techFull:"After failure: rest 5 sec → do 2 reps → rest 5 sec → do 2 reps. Repeat until you can't get 2 full reps.",
+        alt1:"Cable Lateral Raise", alt2:"High-Cable Lateral Raise",
+        video:"https://youtu.be/DX1WzS7k0Uc",
+        notes:"Squeeze side delt to move the weight." },
+      { name:"Dead Hang", reps:"Max hold", rir:[0,0], rec:"30–45 sec",
+        tech:"—", techFull:"", sets:1,
+        alt1:"Active Dead Hang", alt2:"Farmer's Carry",
+        video:"https://youtu.be/5M8uPbfQsbg",
+        notes:"Log time in seconds. Try to add a few more seconds each week." },
+    ]
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────────
+let currentPage = 'dash';
+let currentWeek = parseInt(localStorage.getItem('mm_lastWeek') || '1');
+let sessionData = {}; // key → value (weight or reps)
+let scriptUrl = localStorage.getItem('mm_scriptUrl') || '';
+let isSyncing = false;
+
+function storageKey(page, exIdx, setIdx, wk) {
+  return `mm_${page}_${exIdx}_${setIdx}_${wk}`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// APPS SCRIPT CODE (shown in setup modal)
+// ─────────────────────────────────────────────────────────────────
+const APPS_SCRIPT = `function doGet(e){
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var sheet=ss.getSheetByName('Data')||ss.insertSheet('Data');
+  var action=e.parameter.action;
+  if(action==='load'){
+    var data=sheet.getDataRange().getValues();
+    var obj={};
+    for(var i=1;i<data.length;i++){if(data[i][0])obj[data[i][0]]=data[i][1];}
+    return ContentService.createTextOutput(JSON.stringify({ok:true,data:obj})).setMimeType(ContentService.MimeType.JSON);
+  }
+  return ContentService.createTextOutput(JSON.stringify({ok:false})).setMimeType(ContentService.MimeType.JSON);
+}
+function doPost(e){
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var sheet=ss.getSheetByName('Data')||ss.insertSheet('Data');
+  var payload=JSON.parse(e.postData.contents);
+  var data=sheet.getDataRange().getValues();
+  var map={};
+  for(var i=1;i<data.length;i++){if(data[i][0])map[data[i][0]]=i+1;}
+  for(var key in payload){
+    var val=payload[key];
+    if(map[key]){sheet.getRange(map[key],2).setValue(val);}
+    else{sheet.appendRow([key,val]);}
+  }
+  return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);
+}`;
+
+// ─────────────────────────────────────────────────────────────────
+// SETUP MODAL
+// ─────────────────────────────────────────────────────────────────
+function showSetup() {
+  document.getElementById('scriptCode').value = APPS_SCRIPT;
+  document.getElementById('scriptUrlInput').value = scriptUrl;
+  document.getElementById('setupModal').classList.add('open');
+}
+function closeSetup() {
+  document.getElementById('setupModal').classList.remove('open');
+}
+function copyScript() {
+  const ta = document.getElementById('scriptCode');
+  ta.select();
+  document.execCommand('copy');
+  showToast('📋 Code copied!');
+}
+function saveScriptUrl() {
+  const url = document.getElementById('scriptUrlInput').value.trim();
+  if (!url || !url.startsWith('https://script.google.com')) {
+    showToast('⚠ Paste a valid Apps Script URL');
+    return;
+  }
+  scriptUrl = url;
+  localStorage.setItem('mm_scriptUrl', url);
+  closeSetup();
+  updateSetupBtn();
+  showToast('✓ Connected! Loading data…');
+  loadFromSheets();
+}
+function updateSetupBtn() {
+  const btn = document.getElementById('setupBtn');
+  if (!btn) return;
+  if (scriptUrl) {
+    btn.classList.add('connected');
+    btn.title = 'Google Sheets connected ✓ (tap to reconfigure)';
+    btn.textContent = '✓';
+  } else {
+    btn.classList.remove('connected');
+    btn.title = 'Setup Google Sheets sync';
+    btn.textContent = '⚙';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// GOOGLE SHEETS — LOAD
+// ─────────────────────────────────────────────────────────────────
+async function loadFromSheets() {
+  if (!scriptUrl) return;
+  try {
+    const res = await fetch(`${scriptUrl}?action=load`, { method: 'GET' });
+    const json = await res.json();
+    if (json.ok && json.data) {
+      // Merge sheets data into sessionData (sheets wins over local)
+      Object.assign(sessionData, json.data);
+      // Also persist to localStorage as offline cache
+      for (const [k, v] of Object.entries(json.data)) {
+        if (k.startsWith('mm_')) localStorage.setItem(k, JSON.stringify(v));
+      }
+      // Re-render current page to show loaded data
+      if (currentPage !== 'dash') renderWorkoutPage(currentPage);
+      showToast('☁ Data loaded from Sheets');
+    }
+  } catch(err) {
+    // Silent fail — still works offline via localStorage
+    console.warn('Sheets load failed:', err);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// LOCAL STORAGE — LOAD ALL (offline cache)
+// ─────────────────────────────────────────────────────────────────
+function loadAllFromStorage() {
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('mm_')) {
+      try { sessionData[k] = JSON.parse(localStorage.getItem(k)); } catch(e){}
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SAVE SESSION — to localStorage + Google Sheets
+// ─────────────────────────────────────────────────────────────────
+async function saveSession() {
+  if (isSyncing) return;
+
+  // 1. Collect all current input values
+  const toSave = {};
+  document.querySelectorAll('.w-input').forEach(inp => {
+    const k = inp.dataset.key;
+    if (k) {
+      const val = inp.value.trim();
+      if (val) {
+        sessionData[k] = val;
+        localStorage.setItem(k, JSON.stringify(val));
+        toSave[k] = val;
+      }
+    }
+  });
+
+  // 2. Save last week used
+  localStorage.setItem('mm_lastWeek', currentWeek);
+
+  // 3. If no Sheets URL, just local save
+  if (!scriptUrl) {
+    showToast('✓ Saved locally');
+    return;
+  }
+
+  // 4. Sync to Google Sheets
+  isSyncing = true;
+  const btn = document.getElementById('saveBtn');
+  if (btn) { btn.textContent = '⏳ Syncing…'; btn.disabled = true; }
+
+  try {
+    const res = await fetch(scriptUrl, {
+      method: 'POST',
+      body: JSON.stringify(toSave),
+    });
+    const json = await res.json();
+    if (json.ok) {
+      showToast('☁ Saved to Sheets!');
+    } else {
+      showToast('⚠ Sheets error — saved locally');
+    }
+  } catch(err) {
+    showToast('⚠ Offline — saved locally');
+  } finally {
+    isSyncing = false;
+    if (btn) { btn.textContent = '💾 Save'; btn.disabled = false; }
+  }
+}
+
+function clearSession() {
+  if (!confirm('Clear all inputs for this week?')) return;
+  document.querySelectorAll('.w-input').forEach(inp => {
+    const k = inp.dataset.key;
+    if (k) {
+      inp.value = '';
+      inp.className = inp.className.replace('has-value','').replace('rec-value','').trim();
+      delete sessionData[k];
+      localStorage.removeItem(k);
+    }
+  });
+  showToast('Cleared');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// WEEK BADGE
+// ─────────────────────────────────────────────────────────────────
+function weekBadgeHtml(wk) {
+  if (wk === 1) return `<div class="week-badge intro">✱ Week 1 — Intro Week · Use RIR 1–2 · Don't push to failure yet</div>`;
+  if (wk === 7) return `<div class="week-badge deload">⬇ Week 7 — Deload · Back off ~10% weight · RIR 1–2 · No techniques</div>`;
+  if (wk >= 8) return `<div class="week-badge block2">🔥 Week ${wk} — Block 2 · Push hard · Intensity techniques active on last set</div>`;
+  return `<div class="week-badge normal">Week ${wk} — Block 1 · Push to RIR targets · No intensity techniques yet</div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// RENDER WORKOUT PAGE
+// ─────────────────────────────────────────────────────────────────
+function renderWorkoutPage(pageId) {
+  const wo = WORKOUTS[pageId];
+  if (!wo) return;
+  const container = document.getElementById('page-' + pageId);
+
+  let html = weekBadgeHtml(currentWeek);
+  html += `<div class="section-label">Warm-Up & Cool-Down</div>`;
+  html += `<div class="warmup-card">
+    <div class="warmup-header" onclick="toggleWarmup(this)">
+      <div class="warmup-header-left">⏱ 5-Min Warm-Up + 5-Min Cool-Down</div>
+      <span class="warmup-toggle">▾</span>
+    </div>
+    <div class="warmup-body">
+      <div class="warmup-section">
+        <div class="warmup-section-title">Warm-Up (5 min)</div>
+        <div class="warmup-item"><span class="warmup-time">2 min</span><span class="warmup-text">Light cardio — treadmill, bike, or elliptical. Easy pace to raise core temp.</span></div>
+        <div class="warmup-item"><span class="warmup-time">30 sec</span><span class="warmup-text">Arm circles — 15 forward, 15 backward</span></div>
+        <div class="warmup-item"><span class="warmup-time">30 sec</span><span class="warmup-text">Arm swings — cross-body swings, 15 each direction</span></div>
+        <div class="warmup-item"><span class="warmup-time">30 sec</span><span class="warmup-text">Side-to-side leg swings — hold a wall, 15 each leg</span></div>
+        <div class="warmup-item"><span class="warmup-time">30 sec</span><span class="warmup-text">Front-to-back leg swings — 15 each leg</span></div>
+        <div class="warmup-item"><span class="warmup-time">~1 min</span><span class="warmup-text">Exercise-specific warm-up sets — 45–65% of working weight × 6–10 reps (non-fatiguing)</span></div>
+      </div>
+      <div class="warmup-section cooldown-section">
+        <div class="warmup-section-title">Cool-Down (5 min)</div>
+        <div class="warmup-item"><span class="warmup-time">2 min</span><span class="warmup-text">Easy walk or light bike ride — bring heart rate down</span></div>
+        <div class="warmup-item"><span class="warmup-time">2 min</span><span class="warmup-text">Static stretches — 30 sec each: quads, hamstrings, chest, lats</span></div>
+        <div class="warmup-item"><span class="warmup-time">1 min</span><span class="warmup-text">5 slow deep breaths — note how you feel, any soreness</span></div>
+      </div>
+    </div>
+  </div>`;
+
+  html += `<div class="section-label">Exercises</div>`;
+
+  wo.exercises.forEach((ex, ei) => {
+    const numSets = ex.sets || 2;
+    const hasTech = ex.tech && ex.tech !== '—' && currentWeek >= 8;
+
+    html += `<div class="exercise-card">
+      <div class="ex-header" onclick="toggleEx(this)">
+        <div class="ex-name-row">
+          <div class="ex-name">${ex.name}</div>
+          <span class="ex-chevron">▾</span>
+        </div>
+        <div class="ex-meta">
+          <span class="badge badge-reps">${ex.reps} reps</span>
+          <span class="badge badge-rir">S1: RIR ${ex.rir[0]}</span>
+          ${numSets > 1 ? `<span class="badge badge-rir">S2: RIR ${ex.rir[1]}</span>` : ''}
+          ${currentWeek === 1 ? `<span class="badge badge-rec">✱ ${ex.rec}</span>` : ''}
+          ${hasTech ? `<span class="badge badge-tech">🔥 Technique</span>` : ''}
+        </div>
+      </div>`;
+
+    // Technique box (only in Block 2)
+    if (hasTech) {
+      html += `<div class="technique-box visible"><strong>🔥 ${ex.tech}</strong>${ex.techFull}</div>`;
+    }
+
+    // Set input rows
+    html += `<div class="sets-section">`;
+    for (let s = 0; s < numSets; s++) {
+      const rirVal = s === 0 ? ex.rir[0] : ex.rir[1];
+      const rirClass = rirVal === 0 ? 'rir-0' : rirVal === 1 ? 'rir-1' : 'rir-2';
+      const wKey = storageKey(pageId, ei, s, currentWeek);
+      const savedVal = sessionData[wKey] || '';
+      const isRec = currentWeek === 1 && !savedVal;
+      const placeholderW = currentWeek === 1 ? ex.rec : 'weight';
+      const inputClass = savedVal ? 'input-field has-value' : (isRec ? 'input-field rec-value' : 'input-field');
+      const inputVal = savedVal ? savedVal : (currentWeek === 1 ? ex.rec : '');
+
+      html += `<div class="set-row">
+        <span class="set-label">Set ${s+1}</span>
+        <span class="set-rir ${rirClass}">RIR ${rirVal}</span>
+        <div class="input-group">
+          <div class="input-wrap">
+            <input type="text" inputmode="decimal" class="${inputClass} w-input"
+              data-key="${wKey}" data-page="${pageId}" data-ei="${ei}" data-s="${s}" data-wk="${currentWeek}"
+              value="${inputVal}" placeholder="${placeholderW}"
+              onfocus="this.select()" oninput="onInput(this)">
+            <div class="input-label">weight</div>
+          </div>
+          <div class="input-wrap">
+            <input type="text" inputmode="numeric" class="input-field w-input"
+              data-key="${wKey}_r" data-page="${pageId}" data-ei="${ei}" data-s="${s}" data-wk="${currentWeek}"
+              value="${sessionData[wKey+'_r'] || ''}" placeholder="reps"
+              onfocus="this.select()" oninput="onInput(this)">
+            <div class="input-label">reps</div>
+          </div>
+        </div>
+      </div>`;
+    }
+    html += `</div>`;
+
+    // Expandable details
+    html += `<div class="details-section">
+      <div class="detail-row">
+        <span class="detail-label">Video</span>
+        <a class="video-link" href="${ex.video}" target="_blank" rel="noopener">▶ Watch Demo</a>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Alt 1</span>
+        <span class="detail-value">${ex.alt1}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Alt 2</span>
+        <span class="detail-value">${ex.alt2}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Notes</span>
+        <span class="detail-value">${ex.notes}</span>
+      </div>
+      ${ex.tech && ex.tech !== '—' ? `<div class="detail-row">
+        <span class="detail-label">Block 2</span>
+        <span class="detail-value" style="color:var(--block2)">${ex.tech}</span>
+      </div>` : ''}
+    </div></div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// INTERACTIONS
+// ─────────────────────────────────────────────────────────────────
+function onInput(inp) {
+  const val = inp.value.trim();
+  inp.classList.remove('has-value', 'rec-value');
+  if (val) inp.classList.add('has-value');
+  // auto-save to sessionData
+  if (val) sessionData[inp.dataset.key] = val;
+  else delete sessionData[inp.dataset.key];
+}
+
+function toggleWarmup(header) {
+  const body = header.nextElementSibling;
+  const toggle = header.querySelector('.warmup-toggle');
+  body.classList.toggle('open');
+  toggle.classList.toggle('open');
+}
+
+function toggleEx(header) {
+  const card = header.closest('.exercise-card');
+  const details = card.querySelector('.details-section');
+  const chevron = header.querySelector('.ex-chevron');
+  details.classList.toggle('open');
+  chevron.classList.toggle('open');
+}
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => {
+    if (t.getAttribute('onclick') === `showPage('${id}')`) t.classList.add('active');
+  });
+  currentPage = id;
+  const isWorkout = id !== 'dash';
+  document.getElementById('weekBar').style.display = isWorkout ? 'flex' : 'none';
+  document.getElementById('saveBar').style.display = isWorkout ? 'flex' : 'none';
+  if (isWorkout) renderWorkoutPage(id);
+}
+
+function setWeek(wk) {
+  currentWeek = wk;
+  localStorage.setItem('mm_lastWeek', wk);
+  document.querySelectorAll('.week-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', i + 1 === wk);
+  });
+  if (currentPage !== 'dash') renderWorkoutPage(currentPage);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// AUTO-SAVE on input blur (local only — cloud sync only on Save button)
+// ─────────────────────────────────────────────────────────────────
+document.addEventListener('blur', function(e) {
+  if (e.target.classList.contains('w-input')) {
+    const k = e.target.dataset.key;
+    const val = e.target.value.trim();
+    if (val) {
+      sessionData[k] = val;
+      localStorage.setItem(k, JSON.stringify(val));
+    } else {
+      delete sessionData[k];
+      localStorage.removeItem(k);
+    }
+    localStorage.setItem('mm_lastWeek', currentWeek);
+  }
+}, true);
+
+// ─────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────
+loadAllFromStorage();
+updateSetupBtn();
+
+// Restore last week on week selector UI
+(function() {
+  const lastWk = currentWeek;
+  document.querySelectorAll('.week-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', i + 1 === lastWk);
+  });
+})();
+
+// Load from Sheets in background if connected
+if (scriptUrl) loadFromSheets();
+</script>
+</body>
+</html>
